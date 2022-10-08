@@ -1,5 +1,6 @@
 const main = document.querySelector('main');
-
+let memoForBotRandom = {};
+let lastingShip = null;
 
 /*------Board class------*/
 class Board {
@@ -79,17 +80,41 @@ class Players {
   }
 
   botPlaying() {
-    // I have prevet clicking on botBoard in this 1000 seconds!
+    // I have to prevent clicking on botBoard in this 500 seconds!
     //random tekrari nabayd bede
-
-    let random =  Math.floor(Math.random() * 99);
-    if (yourCells[random].classList[1] === 'filled') {
-      yourCells[random].style.backgroundColor = 'red';
+    
+    if (lastingShip === null) {
+      let random = Math.floor(Math.random() * 99);
+      if (memoForBotRandom[random]) {
+        random = Math.floor(Math.random() * 99);
+      } else {
+        if (yourCells[random].classList[1] === 'filled') {
+          let p = 0;
+          while (yourCells[random+p].classList[1] === 'filled') {
+            yourCells[random+p].style.backgroundColor = 'red';
+            memoForBotRandom[random+p] = true;
+            p++;
+          }
+          yourCells[random+p].textContent = '×';
+          memoForBotRandom[random+p] = true;
+          lastingShip = random;
+        } else {
+          yourCells[random].textContent = '×';
+          memoForBotRandom[random] = true;
+        }
+      } 
     } else {
-      yourCells[random].textContent = '×';
-      bot.turn = !bot.turn;
-      you.turn = !you.turn;
+      let p = 1;
+      while (yourCells[lastingShip-p].classList[1] === 'filled') {
+        yourCells[lastingShip-p].style.backgroundColor = 'red';
+        memoForBotRandom[lastingShip-p] = true;
+        p++;
+      }
+      yourCells[lastingShip-p].textContent = '×';
+      memoForBotRandom[lastingShip-p] = true;
+      lastingShip = null;
     }
+    console.log('memo: ',memoForBotRandom)
   }
     
   youPlay() {
@@ -200,7 +225,7 @@ for(let i = 0; i < yourCells.length; i++) {
     });
 
     yourCells[i].addEventListener('drop', (e) => {
-      // I have to make the shiplocation new, now I can relocate the ships just once
+      // after start game make drag event unable
       console.log('drop')
       e.preventDefault();
       const data= e.dataTransfer.getData("text");
