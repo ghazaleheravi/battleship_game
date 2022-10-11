@@ -66,7 +66,7 @@ class Board {
         if (!isExisting) {
           while(length >= 0) {
             if (botTable)
-            cells[random + length].textContent = 'S';
+            cells[random + length].textContent = '1';
             if (cells === botCells) {
               cells[random + length].textContent = '';
             }
