@@ -7,4 +7,4 @@
 - Vanilla JavaScript
 
 ![snippet](./src/images/start.png)
-![snippet](./src/images/play.pngpng)
+![snippet](./src/images/play.png)
