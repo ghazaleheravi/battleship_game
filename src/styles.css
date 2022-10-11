@@ -12,6 +12,7 @@ body {
 h1 {
   font-size: 50px;
   margin-left: 50px;
+  margin-bottom: 0;
 }
 
 main {
@@ -19,6 +20,7 @@ main {
   justify-content: center;
   align-items: center;
   gap: 50px;
+  margin-bottom: 30px;
 }
 
 table {
@@ -28,6 +30,8 @@ table {
   margin-top: 50px;
   text-align: center;
   background: rgba(0,0,0,0.5);
+  font-size: 20px;
+  font-weight: 700;
 }
 
 td {
@@ -35,10 +39,72 @@ td {
   width: 10%;
   height: 10%;
   cursor: pointer;
-  font-size: 20px;
-  font-weight: 700;
 }
 
 .invisible {
   display: none;
+}
+
+div {
+  width: 600px;
+  height: 80px;
+  background-color: #1b3c4f;
+  margin: 0 auto;
+  text-align: center;
+}
+
+button {
+  border: none;
+  color: white;
+  font-size: 30px;
+  font-weight: 700;
+  background-color: #1b3c4f;
+  margin-top: 20px;
+  cursor: pointer;
+}
+
+.botTable {
+  display: none;
+}
+
+p {
+  text-align: center;
+  font-size: 37px;
+  font-weight: 700;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+.dragging {
+  background-color: black;
+}
+
+ul {
+  display: flex;
+  flex-direction: row;
+  list-style: none;
+  padding: 30px;
+  justify-content: space-around;
+}
+
+li {
+  display: flex;
+  flex-direction: row;
+}
+
+li > div {
+  display: flex;
+  flex-direction: column;
+  width: 12px;
+  height: 12px;
+  border: 1px solid black;
+  border-radius: 50%;
+  background-color: white;
+}
+
+.win-status {
+  padding: 20px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 200;
 }

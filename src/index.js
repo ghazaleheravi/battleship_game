@@ -1,8 +1,16 @@
+/*---------------Global variables-------------*/
 const main = document.querySelector('main');
-let memoForBotRandom = {};
-let lastingShip = null;
+const p = document.querySelector('p');
+const div = document.querySelector('div');
+const startBtn = document.querySelector('button');
+const ul = document.createElement('ul');
 
-/*------Board class------*/
+ul.setAttribute('class','damagedShipList');
+
+let botMovesMemo = {};
+let initialHit = null;
+
+/*----------------Board class----------------*/
 class Board {
   constructor(col, row) {
     this.col = col;
@@ -17,6 +25,7 @@ class Board {
     ];
   }
 
+  // creating table
   displayBoard() {
     const table = document.createElement('table');
     for(let i = 0; i < this.col; i++) {
@@ -32,16 +41,18 @@ class Board {
     main.append(table);
   }
 
+  // put random ships on the tables
   setShips(cells, shipsLocation) {
-    let p = 0;
     let memo = {};
+    let p = 0;
     while(p < this.fleet.length) {
       let randomCells = [];
-      let length = this.fleet[p].length;
+      let length = this.fleet[p].length - 1;
       let random = Math.floor(Math.random() * 99);
       let isExisting = false;
       if(10-random % 10 > length) {
-        let i = 1;
+        // checking for collision in this while loop first
+        let i = 0;
         while (i <= length) {
           if(memo[random + i]) { 
             isExisting = true;
@@ -50,11 +61,16 @@ class Board {
             memo[random+i] = true;
             i++;
           }
-        }    
+        } 
+        // if there is no collision for the entire ship (p), it'll then be placed on the table   
         if (!isExisting) {
-          while(length > 0) {
-            cells[random + length].textContent = '1';
-            cells[random + length].classList.add('filled');
+          while(length >= 0) {
+            if (botTable)
+            cells[random + length].textContent = 'S';
+            if (cells === botCells) {
+              cells[random + length].textContent = '';
+            }
+            cells[random + length].classList.add('ship');
             randomCells.push(random + length);
             length--;
           }
@@ -63,204 +79,294 @@ class Board {
         }
       }
     }
-    console.log('locationOfShips: ',shipsLocation);
   }
 }
 
-/*-------Players class-------*/
-//just create one turn to bot or you!!
+/*------------------Players class---------------*/
 class Players {
-  constructor(player, turn) {
+  constructor(player) {
     this.player = player;
-    this.turn = turn;
     this.shipsCount = 6;
     this.shipsLocation = [];
     this.damagedShips = {};
     this.win = false;
+    this.turn = true;
   }
 
-  botPlaying() {
+  // My AI 
+  botTurn() {
     // I have to prevent clicking on botBoard in this 500 seconds!
-    //random tekrari nabayd bede
-    
-    if (lastingShip === null) {
-      let random = Math.floor(Math.random() * 99);
-      if (memoForBotRandom[random]) {
+    // I have to prevent double click(probably debounce function)
+    // AI missing one turn: 
+    // - if firstHit is leftmost cell in ship. it'll check left anyway does not know size of ship
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    if (initialHit === null) {
+      let random = null;
+      // finding new random cells, ignoring repeat cells/randoms
+      while(true) {
         random = Math.floor(Math.random() * 99);
-      } else {
-        if (yourCells[random].classList[1] === 'filled') {
-          let p = 0;
-          while (yourCells[random+p].classList[1] === 'filled') {
-            yourCells[random+p].style.backgroundColor = 'red';
-            memoForBotRandom[random+p] = true;
+        if(!botMovesMemo[random]) break;
+      }
+      if (playerCells[random].classList[1] === 'ship') {
+        let p = 0;
+        async function myLoop() {
+          while (playerCells[random + p].classList[1] === 'ship' && !botMovesMemo[random + p]) {
+            playerCells[random + p].style.backgroundColor = 'red';
+            player.winCheck(playerCells[random + p]);
+            if (player.shipsCount === 0) {
+              let ul = document.querySelector('ul');
+              ul.style.display = 'none';
+              const winStatus = document.createElement('p');
+              winStatus.setAttribute('class', 'win-status');
+              winStatus.textContent = 'Your army is defeated. Better luck next time.';
+              div.append(winStatus);
+            }
+            botMovesMemo[random + p] = true;
             p++;
+            if ((random + p) % 10 === 0) {
+              break;
+            }
+            await sleep(500);
           }
-          yourCells[random+p].textContent = '×';
-          memoForBotRandom[random+p] = true;
-          lastingShip = random;
-        } else {
-          yourCells[random].textContent = '×';
-          memoForBotRandom[random] = true;
+          initialHit = random;
+          if ((random + p) % 10 === 0 || botMovesMemo[random + p]) {
+            setTimeout(() => {
+              bot.botTurn();
+            }, 500);
+            return;
+          }
+    
+          //if ((random+p) % 10 === 0) myLoop2();
+          if ((random + p) % 10 !== 0) {
+            playerCells[random + p].textContent = '×';
+            botMovesMemo[random + p] = true;
+          } 
         }
-      } 
+        myLoop();
+
+      } else {
+          playerCells[random].textContent = '×';
+          botMovesMemo[random] = true;
+        }
+    // if initialHit !== null. it means go check the left side of inititalHit
     } else {
       let p = 1;
-      while (yourCells[lastingShip-p].classList[1] === 'filled') {
-        yourCells[lastingShip-p].style.backgroundColor = 'red';
-        memoForBotRandom[lastingShip-p] = true;
-        p++;
-      }
-      yourCells[lastingShip-p].textContent = '×';
-      memoForBotRandom[lastingShip-p] = true;
-      lastingShip = null;
+      async function myLoop2() {
+        while (playerCells[initialHit - p].classList[1] === 'ship' && !botMovesMemo[initialHit - p]) {
+          if ((initialHit - p) % 10 === 9) {
+            break;
+          }
+          playerCells[initialHit - p].style.backgroundColor = 'red';
+          player.winCheck(playerCells[initialHit - p]);
+          botMovesMemo[initialHit - p] = true;
+          p++;
+          await sleep(500);
+        }
+        if (botMovesMemo[initialHit - p]){
+          initialHit = null;
+          bot.botTurn();
+          return;
+        }
+        if ((initialHit - p) % 10 !== 9) {
+          playerCells[initialHit - p].textContent = '×';
+          botMovesMemo[initialHit - p] = true;
+          initialHit = null;
+        }
+        else {
+          initialHit = null;
+          bot.botTurn ();
+          return;
+        }
+      } 
+      myLoop2();
     }
-    console.log('memo: ',memoForBotRandom)
   }
     
-  youPlay() {
-    botTable.addEventListener('click', (e) => {
-      if (e.target.matches('td.filled')) {
+  playerTurn() {
+    // prevent clicking more than once on each cell(debounce)
+    // prevent clicking when bot's playing
+    
+    //prevent playing the game after win
+    /*if (!player.turn || player.win) {
+      botTable.removeEventListener('click', botTableClickHandler, { capture: true });
+    }
+    */
+
+    botTable.addEventListener('click', botTableClickHandler, { capture: true });
+
+    function botTableClickHandler(e) {
+      if (e.target.matches('td.ship')) {
         for(const ship of bot.shipsLocation) {
           for (let i = 0; i < ship.length; i++) {
-            if (Number((e.target.className.split(' ')[0].split('-').join(''))) === ship[i]) {
+            if (Number(e.target.className.split(' ')[0].split('-').join('')) === ship[i]) {
               bot.damagedShips[ship.length] = !bot.damagedShips[ship.length] ?  1 : bot.damagedShips[ship.length]+1;
               if (bot.damagedShips[ship.length] === ship.length) {
                 bot.shipsCount--;
-                console.log(bot.shipsCount);
+                let ul = document.querySelectorAll('.damagedShipList > li');
+                for (let i = 0; i < ul.length; i++) {
+                  if (ship.length === ul[i].childNodes.length) {
+                    let divs = ul[i].childNodes;
+                    for (let j = 0; j < divs.length; j++) {
+                      divs[j].style.backgroundColor = `rgba(${0},${0},${0},${.4})`;
+                    }
+                  }
+                }
                 break;
               } 
             }
           }
-          if (bot.shipsCount === 0) {
-            you.win = true;
-            console.log('you won: ',you.win);
-          }
+        }
+        if (bot.shipsCount === 0) {
+          botTable.removeEventListener('click', botTableClickHandler, { capture: true });
+          let ul = document.querySelector('ul');
+          ul.style.display = 'none';
+          const winStatus = document.createElement('p');
+          winStatus.setAttribute('class', 'win-status');
+          //design: add css style that is typing victory...   
+          winStatus.textContent = 'Victory! Your enemy is destroyed.';
+          div.append(winStatus);
+
         }
         e.target.style.backgroundColor = 'red';
       } else {
+        player.turn = !player.turn;
         e.target.textContent = '×';
-        you.turn = !you.turn;
-        bot.turn = !bot.turn;
         setTimeout(() => {
-          bot.botPlaying();
+          bot.botTurn();
         }, 500)
       }
-    });
+    };
+  }
+
+  winCheck(target) {
+    for(const ship of this.shipsLocation) {
+      for (let i = 0; i < ship.length; i++) {
+        if (Number(target.className.split(' ')[0].split('-').join('')) === ship[i]) {
+          this.damagedShips[ship.length] = !this.damagedShips[ship.length] ?  1 : this.damagedShips[ship.length]+1;
+          if (this.damagedShips[ship.length] === ship.length) {
+            this.shipsCount--;
+            break;
+          } 
+        }
+      }
+    } 
   }
 }
 
-/*------Players & Board instances------*/
-const you = new Players('you', true);
-const bot = new Players('bot', false);
+/*---------------making classes instances------------*/
+const player = new Players('player');
+const bot = new Players('bot');
 
-const yourBoard = new Board(10, 10);
+const playerBoard = new Board(10, 10);
 const botBoard = new Board(10, 10);
 
-yourBoard.displayBoard();
+playerBoard.displayBoard();
 botBoard.displayBoard();
 
 /*-----------accessing to DOM table--------------*/
 const tables = document.querySelectorAll('table');
 
-const yourTable = tables[0];
+const playerTable = tables[0];
 const botTable = tables[1];
 
-yourTable.setAttribute('class', 'yourTable');
+playerTable.setAttribute('class', 'playerTable');
 botTable.setAttribute('class', 'botTable');
 
-const yourCells = document.querySelectorAll('.yourTable > tr > td');
+const playerCells = document.querySelectorAll('.playerTable > tr > td');
 const botCells = document.querySelectorAll('.botTable > tr > td');
 
+
 /*----------setting ships on boards-----------*/
-yourBoard.setShips(yourCells, you.shipsLocation);
+playerBoard.setShips(playerCells, player.shipsLocation);
 botBoard.setShips(botCells, bot.shipsLocation);
 
 /*-----------------------------------*/
-you.youPlay();
-
+player.playerTurn();
 
 /*--------------drag & drop events----------------*/
-yourTable.addEventListener('dragstart', (e) => {
-  let movingShip = {};
-  console.log(movingShip);
-  console.log('dragstart');
-  if (e.target.matches('td.filled')) {
-    for (const ship of you.shipsLocation) {
+let draggableShip = {};
+
+playerTable.addEventListener('dragstart', dragStartHandler, { capture: true});
+playerTable.addEventListener('dragend', dragEndHandler, { capture: true});
+playerTable.addEventListener('dragover', dragOverHandler, { capture: true });
+playerTable.addEventListener('drop', dropHandler, { capture: true }) 
+
+function dragStartHandler(e) {
+  if (e.target.matches('td.ship')) {
+    for (const ship of player.shipsLocation) {
       for (let i = 0; i < ship.length; i++) {
         if (ship[i] === Number(e.target.classList[0].split('-').join(''))) {
-          movingShip[0] = ship;
+          draggableShip[0] = ship;
         }        
       }
     }
-    console.log('filled td picked')
-    e.target.classList.replace('filled','dragging');
     e.dataTransfer.clearData();
-    e.dataTransfer.setData('text/plain', JSON.stringify(movingShip));
-    for (let i = 0; i < movingShip[0].length; i++) {
-      /*let strToClass = '';
-      let cellToStr = movingShip[0][i].toString();
-      if (movingShip[0][i] < 10) {
-        strToClass = '0'+ '-' + movingShip[0][i].toString();
-      } else {
-        strToClass = cellToStr.slice(0,1) + '-' + cellToStr.slice(1);
-      }*/
-      yourCells[movingShip[0][i]].textContent = '';
-      yourCells[movingShip[0][i]].classList.remove('filled');
+    e.dataTransfer.setData('text/plain', JSON.stringify(draggableShip));
+    for (let i = 0; i < draggableShip[0].length; i++) {
+      playerCells[draggableShip[0][i]].textContent = '';
+      playerCells[draggableShip[0][i]].classList.remove('ship');
+      playerCells[draggableShip[0][i]].classList.add('dragging');
     }
   }
-});
+};
 
-
-yourTable.addEventListener('dragend', (e) => {
-  console.log('end!');
-  e.target.classList.remove('dragging');
-});
-
-
-for(let i = 0; i < yourCells.length; i++) {
-  if (yourCells[i].className !== ('td.filled')) {
-    yourCells[i].addEventListener('dragover', (e) => {
-      console.log('dragover')
-      e.preventDefault();
-    });
-
-    yourCells[i].addEventListener('drop', (e) => {
-      // after start game make drag event unable
-      console.log('drop')
-      e.preventDefault();
-      const data= e.dataTransfer.getData("text");
-      let strToObj = JSON.parse(data);
-      let newShipLocations = [];
-      console.log(strToObj[0]);
-      let targetCell = Number(e.target.classList[0].split('-').join(''));
-      console.log('targetcell: ',targetCell);
-      for (let i = 0; i < strToObj[0].length; i++) {
-        if (10 - targetCell % 10 >= strToObj[0].length) {
-          yourCells[targetCell+i].textContent = '1';
-          yourCells[targetCell+i].classList.add('filled');
-         newShipLocations.push(targetCell+i);
-        } else {
-          yourCells[targetCell-i].textContent = '1';
-          yourCells[targetCell-i].classList.add('filled'); 
-          newShipLocations.push(targetCell-i); 
-        }
-        //e.target.append(data);
-      }
-  
-      you.shipsLocation[strToObj[0].length-1] = (newShipLocations); 
-      console.log('new ship location: ',you.shipsLocation)
-    });
+function dragEndHandler() {
+  for (let i = 0; i < draggableShip[0].length; i++) {
+    playerCells[draggableShip[0][i]].classList.remove('dragging');
   }
-}
+};
 
+function dragOverHandler(e) {
+  e.preventDefault();
+};
 
-/*--------------------------------*/
-function botHitting(random, firstHit=random) {
-  if (yourCells[random].className !== 'filled') return;
-  else {
-    yourCells[random].style.backgroundColor = 'red'
-  };
-  botHitting(random + 1,firstHit);
-  random = firstHit;
-  botHitting(random - 1,firstHit);
-}
+function dropHandler(e) {
+  //???? how to prevent draging outside the table????
+  const data= e.dataTransfer.getData("text");
+  let strToObj = JSON.parse(data);
+  let newShipLocations = [];
+  let targetCell = Number(e.target.classList[0].split('-').join(''));
+  for (let i = 0; i < strToObj[0].length; i++) {
+    if (10 - targetCell % 10 >= strToObj[0].length) {
+      playerCells[targetCell+i].textContent = '1';
+      playerCells[targetCell+i].classList.add('ship');
+     newShipLocations.push(targetCell+i);
+    } else {
+      playerCells[targetCell-i].textContent = '1';
+      playerCells[targetCell-i].classList.add('ship'); 
+      newShipLocations.push(targetCell-i); 
+    }
+  }
+  player.shipsLocation[strToObj[0].length-1] = (newShipLocations); 
+};
+  
+
+/*-------------Starting Game-------------------*/
+startBtn.addEventListener('click', (e) => {
+  console.log('working')
+  botTable.style.display = 'table';
+  playerTable.style.width = '220px'; 
+  playerTable.style.height = '220px';
+  playerTable.style.fontSize = '12px';
+  startBtn.style.display = 'none';
+  p.style.display = 'none';
+  // prevent moving ships after starting the game
+  playerTable.removeEventListener('dragstart',dragStartHandler, { capture: true });
+  playerTable.removeEventListener('dragend', dragEndHandler, { capture: true });
+  playerTable.removeEventListener('dragover', dragOverHandler, { capture: true });
+  playerTable.removeEventListener('drop', dropHandler, { capture: true });
+
+  
+  for (let i = 0; i < 6; i++) {
+    const li = document.createElement('li');
+    for (let j = 0; j < i+1; j++) {
+      const damagedShip = document.createElement('div');
+      damagedShip.setAttribute('class', `damagedShip-${bot.shipsLocation[i][j]}`);
+      li.append(damagedShip);
+    }
+    ul.append(li);
+  }
+  div.append(ul);
+}); 
+
