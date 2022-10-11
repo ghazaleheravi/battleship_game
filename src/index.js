@@ -197,6 +197,7 @@ class Players {
 
     function botTableClickHandler(e) {
       if (e.target.matches('td.ship')) {
+        // these should be changed with win() method
         for(const ship of bot.shipsLocation) {
           for (let i = 0; i < ship.length; i++) {
             if (Number(e.target.className.split(' ')[0].split('-').join('')) === ship[i]) {
